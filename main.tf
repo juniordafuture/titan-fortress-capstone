@@ -17,9 +17,10 @@ resource "aws_internet_gateway" "gw" {
 }
 
 resource "aws_subnet" "public_courtyard" {
-  vpc_id                  = aws_vpc.tkh_fortress.id
-  cidr_block              = "10.0.1.0/24"
-  map_public_ip_on_launch = true
+  vpc_id                   = aws_vpc.tkh_fortress.id
+  cidr_block               = "10.0.1.0/24"
+  # trivy:ignore:AVD-AWS-0164 -- intentional: this subnet hosts the required public-facing web server
+  map_public_ip_on_launch  = true
   tags = {
     Name = "Public-Courtyard"
   }
@@ -62,6 +63,7 @@ resource "aws_security_group" "web_server_sg" {
     cidr_blocks = ["148.75.195.246/32"]
   }
 
+  # trivy:ignore:AVD-AWS-0104 -- intentional: outbound access required for yum to reach AWS package repos
   egress {
     from_port   = 0
     to_port     = 0
@@ -95,11 +97,19 @@ resource "aws_instance" "web_server" {
   subnet_id              = aws_subnet.public_courtyard.id
   vpc_security_group_ids = [aws_security_group.web_server_sg.id]
 
-  user_data = <<-EOF2
+  metadata_options {
+    http_tokens = "required"
+  }
+
+  root_block_device {
+    encrypted = true
+  }
+
+  user_data = <<-USERDATA
               #!/bin/bash
               yum install -y httpd
               systemctl start httpd
-              EOF2
+              USERDATA
 
   tags = {
     Name = "TKH-Web-Server"
