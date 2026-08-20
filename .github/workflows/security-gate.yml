@@ -1,0 +1,21 @@
+name: Infrastructure Security Gate
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  security_scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: SAST Quality Gate (Trivy/tfsec)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
